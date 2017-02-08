@@ -6,13 +6,13 @@ author: selvasingh
 
 #Getting Started with Network - Manage Virtual Network - in .Net #
 
-      Azure Network sample for managing virtual networks -
-       - Create a virtual network with Subnets
-       - Update a virtual network
-       - Create virtual machines in the virtual network subnets
-       - Create another virtual network
-       - List virtual networks
-       - Delete a virtual network.
+          Azure Network sample for managing virtual networks -
+           - Create a virtual network with Subnets
+           - Update a virtual network
+           - Create virtual machines in the virtual network subnets
+           - Create another virtual network
+           - List virtual networks
+           - Delete a virtual network.
 
 
 ## Running this Sample ##
