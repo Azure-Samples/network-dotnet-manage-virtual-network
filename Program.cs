@@ -5,8 +5,8 @@ using Microsoft.Azure.Management.Compute.Fluent;
 using Microsoft.Azure.Management.Compute.Fluent.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.Network.Fluent.Models;
-using Microsoft.Azure.Management.Resource.Fluent;
-using Microsoft.Azure.Management.Resource.Fluent.Core;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.Management.Samples.Common;
 using System;
 
@@ -155,8 +155,8 @@ namespace ManageVirtualNetwork
                         .WithExistingResourceGroup(ResourceGroupName)
                         .WithExistingPrimaryNetwork(virtualNetwork1)
                         .WithSubnet(VNet1FrontEndSubnetName)
-                        .WithPrimaryPrivateIpAddressDynamic()
-                        .WithNewPrimaryPublicIpAddress(publicIpAddressLeafDnsForFrontEndVm)
+                        .WithPrimaryPrivateIPAddressDynamic()
+                        .WithNewPrimaryPublicIPAddress(publicIpAddressLeafDnsForFrontEndVm)
                         .WithPopularLinuxImage(KnownLinuxVirtualMachineImage.UbuntuServer16_04_Lts)
                         .WithRootUsername(UserName)
                         .WithSsh(SshKey)
@@ -180,8 +180,8 @@ namespace ManageVirtualNetwork
                         .WithExistingResourceGroup(ResourceGroupName)
                         .WithExistingPrimaryNetwork(virtualNetwork1)
                         .WithSubnet(VNet1BackEndSubnetName)
-                        .WithPrimaryPrivateIpAddressDynamic()
-                        .WithoutPrimaryPublicIpAddress()
+                        .WithPrimaryPrivateIPAddressDynamic()
+                        .WithoutPrimaryPublicIPAddress()
                         .WithPopularLinuxImage(KnownLinuxVirtualMachineImage.UbuntuServer16_04_Lts)
                         .WithRootUsername(UserName)
                         .WithSsh(SshKey)
@@ -211,7 +211,7 @@ namespace ManageVirtualNetwork
                 //============================================================
                 // List virtual networks
 
-                foreach (var virtualNetwork in azure.Networks.ListByGroup(ResourceGroupName))
+                foreach (var virtualNetwork in azure.Networks.ListByResourceGroup(ResourceGroupName))
                 {
                     Utilities.PrintVirtualNetwork(virtualNetwork);
                 }
@@ -250,7 +250,7 @@ namespace ManageVirtualNetwork
                 var credentials = SdkContext.AzureCredentialsFactory.FromFile(Environment.GetEnvironmentVariable("AZURE_AUTH_LOCATION"));
 
                 var azure = Azure.Configure()
-                    .WithLogLevel(HttpLoggingDelegatingHandler.Level.BASIC)
+                    .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                     .Authenticate(credentials)
                     .WithDefaultSubscription();
 
