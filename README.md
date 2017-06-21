@@ -4,7 +4,7 @@ platforms: .Net
 author: selvasingh
 ---
 
-#Getting Started with Network - Manage Virtual Network - in .Net #
+# Getting Started with Network - Manage Virtual Network - in .Net #
 
           Azure Network sample for managing virtual networks -
            - Create a virtual network with Subnets
