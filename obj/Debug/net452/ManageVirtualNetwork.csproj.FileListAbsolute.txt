@@ -1,4 +1,0 @@
-C:\Sources\dotnet-samples\network-dotnet-manage-virtual-network\bin\Debug\net452\ManageVirtualNetwork.runtimeconfig.json
-C:\Sources\dotnet-samples\network-dotnet-manage-virtual-network\bin\Debug\net452\ManageVirtualNetwork.runtimeconfig.dev.json
-C:\Sources\dotnet-samples\network-dotnet-manage-virtual-network\obj\Debug\net452\ManageVirtualNetwork.csproj.ManageVirtualNetwork.exe.config
-C:\Sources\dotnet-samples\network-dotnet-manage-virtual-network\obj\Debug\net452\ManageVirtualNetwork.csproj.CoreCompileInputs.cache
