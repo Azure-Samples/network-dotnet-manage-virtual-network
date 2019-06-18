@@ -24,10 +24,10 @@ Set the environment variable `AZURE_AUTH_LOCATION` with the full path for an aut
     git clone https://github.com/Azure-Samples/network-dotnet-manage-virtual-network.git
 
     cd network-dotnet-manage-virtual-network
-
-    dotnet restore
-
-    dotnet run
+  
+    dotnet build
+    
+    bin\Debug\net452\ManageVirtualNetwork.exe
 
 ## More information ##
 
