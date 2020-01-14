@@ -3,43 +3,43 @@ page_type: sample
 languages:
 - csharp
 products:
-- dotnet
 - azure
-- azure-virtual-network
 extensions:
 - services: virtual-network
 - platforms: dotnet
-urlFragment: getting-started-on-managing-virtual-network-in-c
 ---
 
-# Get started on managing Azure virtual networks (C#)
+# Getting started on managing virtual network in C# #
 
-Azure Network sample for managing virtual networks.
+ Azure Network sample for managing virtual networks -
+  - Create a virtual network with Subnets
+  - Update a virtual network
+  - Create virtual machines in the virtual network subnets
+  - Create another virtual network
+  - List virtual networks
+  - Delete a virtual network.
 
-- Create a virtual network with Subnets
-- Update a virtual network
-- Create virtual machines in the virtual network subnets
-- Create another virtual network
-- List virtual networks
-- Delete a virtual network.
 
-## Running this sample
+## Running this Sample ##
 
 To run this sample:
 
 Set the environment variable `AZURE_AUTH_LOCATION` with the full path for an auth file. See [how to create an auth file](https://github.com/Azure/azure-libraries-for-net/blob/master/AUTH.md).
 
-```bash
-git clone https://github.com/Azure-Samples/network-dotnet-manage-virtual-network.git
-cd network-dotnet-manage-virtual-network
-dotnet build
-bin\Debug\net452\ManageVirtualNetwork.exe
-```
+    git clone https://github.com/Azure-Samples/network-dotnet-manage-virtual-network.git
 
-## More information
+    cd network-dotnet-manage-virtual-network
+
+    dotnet build
+
+    bin\Debug\net452\ManageVirtualNetwork.exe
+
+## More information ##
 
 [Azure Management Libraries for C#](https://github.com/Azure/azure-sdk-for-net/tree/Fluent)
 [Azure .Net Developer Center](https://azure.microsoft.com/en-us/develop/net/)
-If you don't have a Microsoft Azure subscription you can get a FREE trial account [here](http://go.microsoft.com/fwlink/?LinkId=330212).
+If you don't have a Microsoft Azure subscription you can get a FREE trial account [here](http://go.microsoft.com/fwlink/?LinkId=330212)
+
+---
 
 This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
