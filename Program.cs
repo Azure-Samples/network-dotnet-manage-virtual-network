@@ -1,14 +1,22 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Management.Compute.Fluent;
-using Microsoft.Azure.Management.Compute.Fluent.Models;
-using Microsoft.Azure.Management.Fluent;
-using Microsoft.Azure.Management.Network.Fluent.Models;
-using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-using Microsoft.Azure.Management.Samples.Common;
-using System;
+using Azure;
+using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager.Resources.Models;
+using Azure.ResourceManager.Samples.Common;
+using Azure.ResourceManager.Resources;
+using Azure.ResourceManager;
+using System.Reflection;
+using Azure.ResourceManager.PrivateDns;
+using Azure.ResourceManager.Network;
+using System.Threading;
+using Azure.ResourceManager.Compute;
+using Azure.ResourceManager.PrivateDns.Models;
+using System.Net;
+using Azure.ResourceManager.Compute.Models;
+using System.Net.WebSockets;
 
 namespace ManageVirtualNetwork
 {
