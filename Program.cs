@@ -87,8 +87,8 @@ namespace ManageVirtualNetwork
                     }
 
                 };
-                var backendNsgLro = resourceGroup.GetNetworkSecurityGroups().CreateOrUpdateAsync(WaitUntil.Completed, backendNsgName, backendNsgInput);
-                NetworkSecurityGroupResource backendNsg = backendNsgLro.Result.Value;
+                var backendNsgLro = resourceGroup.GetNetworkSecurityGroups().CreateOrUpdate(WaitUntil.Completed, backendNsgName, backendNsgInput);
+                NetworkSecurityGroupResource backendNsg = backendNsgLro.Value;
                 Utilities.Log($"Created network security group: {backendNsg.Data.Name}");
 
                 // Create the virtual network with frontend and backend subnets, with
@@ -153,8 +153,8 @@ namespace ManageVirtualNetwork
                     }
 
                 };
-                var frontendNsgLro = resourceGroup.GetNetworkSecurityGroups().CreateOrUpdateAsync(WaitUntil.Completed, frontendNsgName, frontendNsgInput);
-                NetworkSecurityGroupResource frontendNsg = frontendNsgLro.Result.Value;
+                var frontendNsgLro = resourceGroup.GetNetworkSecurityGroups().CreateOrUpdate(WaitUntil.Completed, frontendNsgName, frontendNsgInput);
+                NetworkSecurityGroupResource frontendNsg = frontendNsgLro.Value;
                 Utilities.Log($"Created network security group: {frontendNsg.Data.Name}");
 
                 // Update the virtual network frontend subnet by associating it with network security group
