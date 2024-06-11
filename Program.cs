@@ -1,26 +1,21 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License. See License.txt in the project root for license information.
 
-using Microsoft.Azure.Management.Compute.Fluent;
-using Microsoft.Azure.Management.Compute.Fluent.Models;
-using Microsoft.Azure.Management.Fluent;
-using Microsoft.Azure.Management.Network.Fluent.Models;
-using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-using Microsoft.Azure.Management.Samples.Common;
-using System;
+using Azure;
+using Azure.Core;
+using Azure.Identity;
+using Azure.ResourceManager.Resources.Models;
+using Azure.ResourceManager.Samples.Common;
+using Azure.ResourceManager.Resources;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Network;
+using Azure.ResourceManager.Network.Models;
 
 namespace ManageVirtualNetwork
 {
     public class Program
     {
-        private static readonly string VNet1FrontEndSubnetName = "frontend";
-        private static readonly string VNet1BackEndSubnetName = "backend";
-        private static readonly string VNet1FrontEndSubnetNsgName = "frontendnsg";
-        private static readonly string VNet1BackEndSubnetNsgName = "backendnsg";
-        private static readonly string UserName = Utilities.CreateUsername();
-        private static readonly string SshKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCfSPC2K7LZcFKEO+/t3dzmQYtrJFZNxOsbVgOVKietqHyvmYGHEC0J2wPdAqQ/63g/hhAEFRoyehM+rbeDri4txB3YFfnOK58jqdkyXzupWqXzOrlKY4Wz9SKjjN765+dqUITjKRIaAip1Ri137szRg71WnrmdP3SphTRlCx1Bk2nXqWPsclbRDCiZeF8QOTi4JqbmJyK5+0UqhqYRduun8ylAwKKQJ1NJt85sYIHn9f1Rfr6Tq2zS0wZ7DHbZL+zB5rSlAr8QyUdg/GQD+cmSs6LvPJKL78d6hMGk84ARtFo4A79ovwX/Fj01znDQkU6nJildfkaolH2rWFG/qttD azjava@javalib.Com";
-        private static readonly string ResourceGroupName = SdkContext.RandomResourceName("rgNEMV", 24);
+        private static ResourceIdentifier? _resourceGroupId = null;
 
         /**
          * Azure Network sample for managing virtual networks -
@@ -31,16 +26,27 @@ namespace ManageVirtualNetwork
          *  - List virtual networks
          *  - Delete a virtual network.
          */
-        public static void RunSample(IAzure azure)
+        public static void RunSample(ArmClient client)
         {
-            string vnetName1 = SdkContext.RandomResourceName("vnet1", 20);
-            string vnetName2 = SdkContext.RandomResourceName("vnet2", 20);
-            string frontEndVmName = SdkContext.RandomResourceName("fevm", 24);
-            string backEndVmName = SdkContext.RandomResourceName("bevm", 24);
-            string publicIpAddressLeafDnsForFrontEndVm = SdkContext.RandomResourceName("pip1", 24);
-            
+            string vnetName1 = Utilities.CreateRandomName("vnet1");
+            string vnetName2 = Utilities.CreateRandomName("vnet2");
+            string frontEndVmName = Utilities.CreateRandomName("fevm");
+            string backEndVmName = Utilities.CreateRandomName("bevm");
+            string publicIpAddressLeafDnsForFrontEndVm = Utilities.CreateRandomName("pip1");
+
             try
             {
+                // Get default subscription
+                SubscriptionResource subscription = client.GetDefaultSubscription();
+
+                // Create a resource group in the EastUS region
+                string rgName = Utilities.CreateRandomName("NetworkSampleRG");
+                Utilities.Log($"Creating resource group...");
+                ArmOperation<ResourceGroupResource> rgLro = subscription.GetResourceGroups().CreateOrUpdate(WaitUntil.Completed, rgName, new ResourceGroupData(AzureLocation.EastUS));
+                ResourceGroupResource resourceGroup = rgLro.Value;
+                _resourceGroupId = resourceGroup.Id;
+                Utilities.Log("Created a resource group with name: " + resourceGroup.Data.Name);
+
                 //============================================================
                 // Create a virtual network with specific address-space and two subnet
 
@@ -48,52 +54,64 @@ namespace ManageVirtualNetwork
 
                 Utilities.Log("Creating a network security group for virtual network backend subnet...");
 
-                var backEndSubnetNsg = azure.NetworkSecurityGroups
-                        .Define(VNet1BackEndSubnetNsgName)
-                        .WithRegion(Region.USEast)
-                        .WithNewResourceGroup(ResourceGroupName)
-                        .DefineRule("DenyInternetInComing")
-                            .DenyInbound()
-                            .FromAddress("INTERNET")
-                            .FromAnyPort()
-                            .ToAnyAddress()
-                            .ToAnyPort()
-                            .WithAnyProtocol()
-                            .Attach()
-                        .DefineRule("DenyInternetOutGoing")
-                            .DenyOutbound()
-                            .FromAnyAddress()
-                            .FromAnyPort()
-                            .ToAddress("INTERNET")
-                            .ToAnyPort()
-                            .WithAnyProtocol()
-                            .Attach()
-                        .Create();
+                string backendNsgName = Utilities.CreateRandomName("backEndNSG");
+                NetworkSecurityGroupData backendNsgInput = new NetworkSecurityGroupData()
+                {
+                    Location = resourceGroup.Data.Location,
+                    SecurityRules =
+                    {
+                        new SecurityRuleData()
+                        {
+                            Name = "DenyInternetInComing",
+                            Protocol = SecurityRuleProtocol.Asterisk,
+                            SourcePortRange = "*",
+                            DestinationPortRange = "*",
+                            SourceAddressPrefix = "INTERNET",
+                            DestinationAddressPrefix = "*",
+                            Access = SecurityRuleAccess.Deny,
+                            Priority = 100,
+                            Direction = SecurityRuleDirection.Inbound,
+                        },
+                        new SecurityRuleData()
+                        {
+                            Name = "DenyInternetOutGoing",
+                            Protocol = SecurityRuleProtocol.Asterisk,
+                            SourcePortRange = "*",
+                            DestinationPortRange = "*",
+                            SourceAddressPrefix = "*",
+                            DestinationAddressPrefix = "internet",
+                            Access = SecurityRuleAccess.Deny,
+                            Priority = 200,
+                            Direction = SecurityRuleDirection.Outbound,
+                        }
+                    }
 
-                Utilities.Log("Created network security group");
-                // Print the network security group
-                Utilities.PrintNetworkSecurityGroup(backEndSubnetNsg);
+                };
+                var backendNsgLro = resourceGroup.GetNetworkSecurityGroups().CreateOrUpdate(WaitUntil.Completed, backendNsgName, backendNsgInput);
+                NetworkSecurityGroupResource backendNsg = backendNsgLro.Value;
+                Utilities.Log($"Created network security group: {backendNsg.Data.Name}");
 
                 // Create the virtual network with frontend and backend subnets, with
                 // network security group rule applied to backend subnet]
 
                 Utilities.Log("Creating virtual network #1...");
 
-                var virtualNetwork1 = azure.Networks.Define(vnetName1)
-                        .WithRegion(Region.USEast)
-                        .WithExistingResourceGroup(ResourceGroupName)
-                        .WithAddressSpace("192.168.0.0/16")
-                        .WithSubnet(VNet1FrontEndSubnetName, "192.168.1.0/24")
-                        .DefineSubnet(VNet1BackEndSubnetName)
-                            .WithAddressPrefix("192.168.2.0/24")
-                            .WithExistingNetworkSecurityGroup(backEndSubnetNsg)
-                            .Attach()
-                        .Create();
-
-                Utilities.Log("Created a virtual network");
-
-                // Print the virtual network details
-                Utilities.PrintVirtualNetwork(virtualNetwork1);
+                string backendSubnetName = Utilities.CreateRandomName("besubnet");
+                VirtualNetworkData vnetInput1 = new VirtualNetworkData()
+                {
+                    Location = resourceGroup.Data.Location,
+                    AddressPrefixes = { "192.168.0.0/16" },
+                    Subnets =
+                    {
+                        new SubnetData() { AddressPrefix = "192.168.1.0/24", Name = "subnet1" },
+                        new SubnetData() { AddressPrefix = "192.168.2.0/24", Name = backendSubnetName, NetworkSecurityGroup = backendNsg.Data }
+                    },
+                };
+                var vnetLro1 = resourceGroup.GetVirtualNetworks().CreateOrUpdate(WaitUntil.Completed, vnetName1, vnetInput1);
+                VirtualNetworkResource vnet1 = vnetLro1.Value;
+                SubnetData beSubnet = vnet1.Data.Subnets.First(item => item.Name == backendSubnetName);
+                Utilities.Log($"Created a virtual network: {vnet1.Data.Name}");
+                Utilities.Log($"vnet connected nsg: {beSubnet.NetworkSecurityGroup.Id.Name}");
 
                 //============================================================
                 // Update a virtual network
@@ -102,133 +120,123 @@ namespace ManageVirtualNetwork
 
                 Utilities.Log("Creating a network security group for virtual network backend subnet...");
 
-                var frontEndSubnetNsg = azure.NetworkSecurityGroups.Define(VNet1FrontEndSubnetNsgName)
-                        .WithRegion(Region.USEast)
-                        .WithExistingResourceGroup(ResourceGroupName)
-                        .DefineRule("AllowHttpInComing")
-                            .AllowInbound()
-                            .FromAddress("INTERNET")
-                            .FromAnyPort()
-                            .ToAnyAddress()
-                            .ToPort(80)
-                            .WithProtocol(SecurityRuleProtocol.Tcp)
-                            .Attach()
-                        .DefineRule("DenyInternetOutGoing")
-                            .DenyOutbound()
-                            .FromAnyAddress()
-                            .FromAnyPort()
-                            .ToAddress("INTERNET")
-                            .ToAnyPort()
-                            .WithAnyProtocol()
-                            .Attach()
-                        .Create();
+                string frontendNsgName = Utilities.CreateRandomName("frontEndNSG");
+                NetworkSecurityGroupData frontendNsgInput = new NetworkSecurityGroupData()
+                {
+                    Location = resourceGroup.Data.Location,
+                    SecurityRules =
+                    {
+                        new SecurityRuleData()
+                        {
+                            Name = "AllowHttpInComing",
+                            Protocol = SecurityRuleProtocol.Tcp,
+                            SourcePortRange = "*",
+                            DestinationPortRange = "80",
+                            SourceAddressPrefix = "INTERNET",
+                            DestinationAddressPrefix = "*",
+                            Access = SecurityRuleAccess.Allow,
+                            Priority = 100,
+                            Direction = SecurityRuleDirection.Inbound,
+                        },
+                        new SecurityRuleData()
+                        {
+                            Name = "DenyInternetOutGoing",
+                            Protocol = SecurityRuleProtocol.Asterisk,
+                            SourcePortRange = "*",
+                            DestinationPortRange = "*",
+                            SourceAddressPrefix = "*",
+                            DestinationAddressPrefix = "internet",
+                            Access = SecurityRuleAccess.Deny,
+                            Priority = 200,
+                            Direction = SecurityRuleDirection.Outbound,
+                        }
+                    }
 
-                Utilities.Log("Created network security group");
-                // Print the network security group
-                Utilities.PrintNetworkSecurityGroup(frontEndSubnetNsg);
+                };
+                var frontendNsgLro = resourceGroup.GetNetworkSecurityGroups().CreateOrUpdate(WaitUntil.Completed, frontendNsgName, frontendNsgInput);
+                NetworkSecurityGroupResource frontendNsg = frontendNsgLro.Value;
+                Utilities.Log($"Created network security group: {frontendNsg.Data.Name}");
 
                 // Update the virtual network frontend subnet by associating it with network security group
 
                 Utilities.Log("Associating network security group rule to frontend subnet");
 
-                virtualNetwork1.Update()
-                        .UpdateSubnet(VNet1FrontEndSubnetName)
-                            .WithExistingNetworkSecurityGroup(frontEndSubnetNsg)
-                            .Parent()
-                        .Apply();
-
+                string frontendSubnetName = Utilities.CreateRandomName("fesubnet");
+                vnetInput1 = new VirtualNetworkData()
+                {
+                    Location = resourceGroup.Data.Location,
+                    AddressPrefixes = { "192.168.0.0/16" },
+                    Subnets =
+                    {
+                        new SubnetData() { AddressPrefix = "192.168.1.0/24", Name = "subnet1" },
+                        new SubnetData() { AddressPrefix = "192.168.2.0/24", Name = backendSubnetName, NetworkSecurityGroup = backendNsg.Data },
+                        new SubnetData() { AddressPrefix = "192.168.3.0/24", Name = frontendSubnetName, NetworkSecurityGroup = frontendNsg.Data },
+                    },
+                };
+                vnetLro1 = resourceGroup.GetVirtualNetworks().CreateOrUpdate(WaitUntil.Completed, vnetName1, vnetInput1);
+                vnet1 = vnetLro1.Value;
+                SubnetData feSubnet = vnet1.Data.Subnets.First(item => item.Name == frontendSubnetName);
                 Utilities.Log("Network security group rule associated with the frontend subnet");
-                // Print the virtual network details
-                Utilities.PrintVirtualNetwork(virtualNetwork1);
+                Utilities.Log("vnet connected nsg: " + feSubnet.NetworkSecurityGroup.Id.Name);
 
                 //============================================================
                 // Create a virtual machine in each subnet
 
                 // Creates the first virtual machine in frontend subnet
 
-                Utilities.Log("Creating a Linux virtual machine in the frontend subnet");
-
-                var t1 = DateTime.UtcNow;
-
-                var frontEndVM = azure.VirtualMachines.Define(frontEndVmName)
-                        .WithRegion(Region.USEast)
-                        .WithExistingResourceGroup(ResourceGroupName)
-                        .WithExistingPrimaryNetwork(virtualNetwork1)
-                        .WithSubnet(VNet1FrontEndSubnetName)
-                        .WithPrimaryPrivateIPAddressDynamic()
-                        .WithNewPrimaryPublicIPAddress(publicIpAddressLeafDnsForFrontEndVm)
-                        .WithPopularLinuxImage(KnownLinuxVirtualMachineImage.UbuntuServer16_04_Lts)
-                        .WithRootUsername(UserName)
-                        .WithSsh(SshKey)
-                        .WithSize(VirtualMachineSizeTypes.Parse("Standard_D2a_v4"))
-                        .Create();
-
-                var t2 = DateTime.UtcNow;
-                Utilities.Log("Created Linux VM: (took "
-                        + (t2 - t1).TotalSeconds + " seconds) " + frontEndVM.Id);
-                // Print virtual machine details
-                Utilities.PrintVirtualMachine(frontEndVM);
+                Utilities.Log("Creating a virtual machine in the frontend subnet");
+                var frontEndVM = Utilities.CreateVirtualMachine(resourceGroup, feSubnet.Id, frontEndVmName);
+                Utilities.Log($"Created VM: {frontEndVM.Data.Name}");
 
                 // Creates the second virtual machine in the backend subnet
 
-                Utilities.Log("Creating a Linux virtual machine in the backend subnet");
-
-                var t3 = DateTime.UtcNow;
-
-                var backEndVM = azure.VirtualMachines.Define(backEndVmName)
-                        .WithRegion(Region.USEast)
-                        .WithExistingResourceGroup(ResourceGroupName)
-                        .WithExistingPrimaryNetwork(virtualNetwork1)
-                        .WithSubnet(VNet1BackEndSubnetName)
-                        .WithPrimaryPrivateIPAddressDynamic()
-                        .WithoutPrimaryPublicIPAddress()
-                        .WithPopularLinuxImage(KnownLinuxVirtualMachineImage.UbuntuServer16_04_Lts)
-                        .WithRootUsername(UserName)
-                        .WithSsh(SshKey)
-                        .WithSize(VirtualMachineSizeTypes.Parse("Standard_D2a_v4"))
-                        .Create();
-
-                var t4 = DateTime.UtcNow;
-                Utilities.Log("Created Linux VM: (took "
-                        + (t4 - t3).TotalSeconds + " seconds) " + backEndVM.Id);
-                // Print virtual machine details
-                Utilities.PrintVirtualMachine(backEndVM);
+                Utilities.Log("Creating a virtual machine in the backend subnet");
+                var backEndVM = Utilities.CreateVirtualMachine(resourceGroup, beSubnet.Id, backEndVmName);
+                Utilities.Log($"Created VM: {backEndVM.Data.Name}");
 
                 //============================================================
                 // Create a virtual network with default address-space and one default subnet
 
                 Utilities.Log("Creating virtual network #2...");
 
-                var virtualNetwork2 = azure.Networks.Define(vnetName2)
-                        .WithRegion(Region.USEast)
-                        .WithNewResourceGroup(ResourceGroupName)
-                        .Create();
-
-                Utilities.Log("Created a virtual network");
-                // Print the virtual network details
-                Utilities.PrintVirtualNetwork(virtualNetwork2);
+                VirtualNetworkData vnetInput2 = new VirtualNetworkData()
+                {
+                    Location = resourceGroup.Data.Location,
+                    AddressPrefixes = { "10.10.0.0/16" },
+                    Subnets =
+                    {
+                        new SubnetData() { AddressPrefix = "10.10.1.0/24", Name = "default" },
+                    },
+                };
+                var vnetLro2 = resourceGroup.GetVirtualNetworks().CreateOrUpdate(WaitUntil.Completed, vnetName2, vnetInput2);
+                var vnet2 = vnetLro2.Value;
+                Utilities.Log($"Created a virtual network: {vnet2.Data.Name}");
 
                 //============================================================
                 // List virtual networks
 
-                foreach (var virtualNetwork in azure.Networks.ListByResourceGroup(ResourceGroupName))
+                Utilities.Log($"Get all virtual network under {resourceGroup.Data.Name}");
+                foreach (var virtualNetwork in resourceGroup.GetVirtualNetworks().GetAll())
                 {
-                    Utilities.PrintVirtualNetwork(virtualNetwork);
+                    Utilities.Log("\t" + virtualNetwork.Data.Name);
                 }
 
                 //============================================================
                 // Delete a virtual network
                 Utilities.Log("Deleting the virtual network");
-                azure.Networks.DeleteById(virtualNetwork2.Id);
+                vnet2.Delete(WaitUntil.Completed);
                 Utilities.Log("Deleted the virtual network");
             }
             finally
             {
                 try
                 {
-                    Utilities.Log("Deleting Resource Group: " + ResourceGroupName);
-                    azure.ResourceGroups.DeleteByName(ResourceGroupName);
-                    Utilities.Log("Deleted Resource Group: " + ResourceGroupName);
+                    if (_resourceGroupId is not null)
+                    {
+                        Utilities.Log($"Deleting Resource Group...");
+                        client.GetResourceGroupResource(_resourceGroupId).Delete(WaitUntil.Completed);
+                        Utilities.Log($"Deleted Resource Group: {_resourceGroupId.Name}");
+                    }
                 }
                 catch (NullReferenceException)
                 {
@@ -247,17 +255,14 @@ namespace ManageVirtualNetwork
             {
                 //=================================================================
                 // Authenticate
-                var credentials = SdkContext.AzureCredentialsFactory.FromFile(Environment.GetEnvironmentVariable("AZURE_AUTH_LOCATION"));
+                var clientId = Environment.GetEnvironmentVariable("CLIENT_ID");
+                var clientSecret = Environment.GetEnvironmentVariable("CLIENT_SECRET");
+                var tenantId = Environment.GetEnvironmentVariable("TENANT_ID");
+                var subscription = Environment.GetEnvironmentVariable("SUBSCRIPTION_ID");
+                ClientSecretCredential credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
+                ArmClient client = new ArmClient(credential, subscription);
 
-                var azure = Azure.Configure()
-                    .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
-                    .Authenticate(credentials)
-                    .WithDefaultSubscription();
-
-                // Print selected subscription
-                Utilities.Log("Selected subscription: " + azure.SubscriptionId);
-
-                RunSample(azure);
+                RunSample(client);
             }
             catch (Exception ex)
             {
